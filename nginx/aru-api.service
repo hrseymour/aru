@@ -1,0 +1,14 @@
+[Unit]
+Description=ARU Flask API Service
+After=network.target
+
+[Service]
+User=harlan
+Group=harlan
+WorkingDirectory=/home/harlan/repos/aru
+Environment="PATH=/home/harlan/repos/aru/venv/bin"
+ExecStart=/home/harlan/repos/aru/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:8000 api.wsgi:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

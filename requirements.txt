@@ -1,0 +1,4 @@
+flask==3.0.0
+gunicorn==22.0.0
+gradio==4.44.1
+requests==2.31.0

@@ -1,0 +1,14 @@
+[Unit]
+Description=ARU Gradio Frontend Service
+After=network.target
+
+[Service]
+User=harlan
+Group=harlan
+WorkingDirectory=/home/harlan/repos/aru/frontend
+Environment="PATH=/home/harlan/repos/aru/venv/bin"
+ExecStart=/home/harlan/repos/aru/venv/bin/python app.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
