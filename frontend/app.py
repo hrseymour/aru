@@ -1,8 +1,9 @@
 # frontend/app.py
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from gradio import Interface
 import gradio as gr
 import requests
+import os
 
 # Create FastAPI app
 app = FastAPI()
@@ -43,9 +44,16 @@ demo = Interface(
     allow_flagging="never"
 )
 
-# Mount the Gradio app at the root path
+# Determine if we're running behind a proxy
+@app.get("/detect-base-path")
+def detect_base_path(request: Request):
+    return {"base_path": request.scope.get("root_path", "")}
+
+# Mount the Gradio app with dynamic path determination
 app = gr.mount_gradio_app(app, demo, path="/")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    # Get the value from an environment variable, default to empty string
+    root_path = os.environ.get("ROOT_PATH", "")
+    uvicorn.run(app, host="0.0.0.0", port=8001, root_path=root_path)
