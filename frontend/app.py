@@ -40,20 +40,13 @@ demo = Interface(
     outputs=gr.Textbox(label="Result"),
     title="Number Addition App",
     description="Enter two numbers to add them using the API",
-    # Disable the flag button
     allow_flagging="never"
 )
 
-# Determine if we're running behind a proxy
-@app.get("/detect-base-path")
-def detect_base_path(request: Request):
-    return {"base_path": request.scope.get("root_path", "")}
-
-# Mount the Gradio app with dynamic path determination
-app = gr.mount_gradio_app(app, demo, path="/")
+# Mount the Gradio app with explicit root_path
+app = gr.mount_gradio_app(app, demo, path="/", root_path="/ui")
 
 if __name__ == "__main__":
     import uvicorn
-    # Get the value from an environment variable, default to empty string
-    root_path = os.environ.get("ROOT_PATH", "")
-    uvicorn.run(app, host="0.0.0.0", port=8001, root_path=root_path)
+    uvicorn.run(app, host="0.0.0.0", port=8001)
+
