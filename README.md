@@ -32,7 +32,7 @@ git clone https://github.com/hrseymour/aru.git
 cd aru
 ```
 
-2. Run the installation script to create the virtual environment and install dependencies:
+2. Run the installation script to create the virtual environment and install dependencies (assuming Python 3.10+ and Pip are already installed):
 ```bash
 chmod +x install.sh
 ./install.sh
