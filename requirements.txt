@@ -7,6 +7,7 @@ gunicorn
 mistralai
 numpy
 pandas
+PyPdf2
 python-multipart
 requests
 uvicorn

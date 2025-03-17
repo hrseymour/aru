@@ -11,7 +11,6 @@ UNKNOWN_TEXT_LEN = 10000
 OCR_TAG = "OCR!"
 
 
-
 def read_file(file_path):
     with open(file_path, "rb") as file:
         return file.read()
@@ -146,7 +145,7 @@ def mistral_extract_text(file_blob, file_name, prompt_text):
     )
     
     # Return the content of the response
-    return chat_response.choices[0].message.content
+    return post_process_csv(chat_response.choices[0].message.content)
 
 
 def mistral_extract_text_ocr(file_blob, file_name):
@@ -217,7 +216,7 @@ def openai_extract_text(file_blob, file_name, prompt_text):
         temperature=0.1
     )    
 
-    return response.choices[0].message.content
+    return post_process_csv(response.choices[0].message.content)
 
 
 def gemini_extract_text(file_blob, file_name, prompt_text):
@@ -238,7 +237,7 @@ def gemini_extract_text(file_blob, file_name, prompt_text):
         ]
         
         response = model_instance.generate_content(contents)
-        return response.text
+        return post_process_csv(response.text)
     
     elif file_type == "pdf":
         # Gemini can handle PDFs directly
@@ -248,7 +247,7 @@ def gemini_extract_text(file_blob, file_name, prompt_text):
         ]
         
         response = model_instance.generate_content(contents)
-        return response.text
+        return post_process_csv(response.text)
     
     else:
         # For other file types, use the same approach as in openai_extract_text
@@ -262,4 +261,4 @@ def gemini_extract_text(file_blob, file_name, prompt_text):
         contents = [f"{prompt_text}\n\nDocument content:\n{text}"]
         
         response = model_instance.generate_content(contents)
-        return response.text
+        return post_process_csv(response.text)

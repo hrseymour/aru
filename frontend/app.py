@@ -1,50 +1,37 @@
 # frontend/app.py
-from fastapi import FastAPI, Request
-from gradio import Interface
+from fastapi import FastAPI
 import gradio as gr
-import requests
 import os
+
+# Import tab modules
+from frontend.tabs.add_tab import create_add_tab
+from frontend.tabs.ocr_tab import create_ocr_tab
 
 # Create FastAPI app
 app = FastAPI()
 
-def add_numbers(a, b):
-    try:
-        # Make sure a and b are properly converted to numbers
-        a_val = float(a) if a is not None else 0
-        b_val = float(b) if b is not None else 0
-        
-        # Use a full URL here to avoid relative path issues
-        response = requests.post(
-            "http://localhost:8000/add",
-            json={"a": a_val, "b": b_val}
-        )
-        
-        if response.status_code == 200:
-            result = response.json()["result"]
-            return f"{result}"
-        else:
-            return f"Error from API: {response.json().get('error', 'Unknown error')}"
-    except ValueError:
-        return "Please enter valid numbers"
-    except requests.exceptions.RequestException as e:
-        return f"Failed to connect to API: {str(e)}"
+def create_gradio_interface():
+    # Create tabs
+    with gr.Blocks() as demo:
+        with gr.Tabs():
+            with gr.Tab("Test"):
+                create_add_tab()
+            
+            with gr.Tab("OCR"):
+                create_ocr_tab()
+    
+    return demo
 
 # Create the Gradio interface
-demo = Interface(
-    fn=add_numbers,
-    inputs=[
-        gr.Number(label="Number A", value=0),
-        gr.Number(label="Number B", value=0)
-    ],
-    outputs=gr.Textbox(label="Result"),
-    title="Number Addition App",
-    description="Enter two numbers to add them using the API",
-    allow_flagging="never"
-)
+demo = create_gradio_interface()
+
+def is_run_by_systemd():
+    # systemd sets specific environment variables
+    return 'INVOCATION_ID' in os.environ or 'JOURNAL_STREAM' in os.environ
 
 # Mount the Gradio app with explicit root_path
-app = gr.mount_gradio_app(app, demo, path="/", root_path="/ui")
+app = gr.mount_gradio_app(app, demo, path="/", 
+                          root_path=("/ui" if is_run_by_systemd() else "/"))
 
 if __name__ == "__main__":
     import uvicorn
