@@ -2,6 +2,11 @@ import configparser
 
 
 class CaseSensitiveConfigParser(configparser.ConfigParser):
+    def __init__(self, **kwargs):
+        # Set interpolation=None by default, but allow it to be overridden
+        kwargs.setdefault('interpolation', None)
+        super().__init__(**kwargs)
+    
     def optionxform(self, optionstr):
         return optionstr
 

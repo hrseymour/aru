@@ -3,11 +3,72 @@ import gradio as gr
 import os
 import requests
 from utils.config import config
+from utils.call_ai import load_prompts
 
 PROCESSED_DIR = "data/processed"
 
+def create_ocr_tab():
+    # Load prompts for the dropdown
+    sorted_names, prompt_map = load_prompts()
+    
+    default_prompt_name = "CSV OCR"
+    default_prompt = prompt_map.get(default_prompt_name)
+    
+    # Handler for when a prompt is selected
+    def on_prompt_selected(prompt_name):
+        selected_prompt = prompt_map[prompt_name]
+        return selected_prompt['Prompt'], selected_prompt['Model'], selected_prompt['FileExt']
 
-def process_file(file, prompt_text):
+    with gr.Group():
+        gr.Markdown("## Text Extraction and Processing")
+        
+        with gr.Row():
+            file_input = gr.File(label="Upload File")
+            
+        with gr.Row():
+            prompt_dropdown = gr.Dropdown(
+                choices=sorted_names,
+                value=default_prompt_name if default_prompt_name in sorted_names else None,
+                label="Select Prompt Template"
+            )
+        
+        # Hidden fields to store selected prompt details
+        model_value = gr.Textbox(visible=False, value=default_prompt["Model"])
+        file_ext_value = gr.Textbox(visible=False, value=default_prompt["FileExt"])
+        
+        prompt_text = gr.Textbox(
+            label="Prompt Text", 
+            placeholder="Enter prompt text to guide the OCR extraction...",
+            lines=5,
+            value=default_prompt["Prompt"]
+        )
+        
+        with gr.Row():
+            process_btn = gr.Button("Process File", size="sm")
+        
+        # Instead of using scale, we'll use a more compatible approach
+        with gr.Row():
+            # Use columns to control the width
+            with gr.Column(variant="compact"):
+                output_file = gr.File(label="Output File")
+            with gr.Column(variant="compact"):
+                status_text = gr.Textbox(label="Status")
+        
+        # Connect the prompt dropdown to update the prompt text and hidden fields
+        prompt_dropdown.change(
+            fn=on_prompt_selected,
+            inputs=[prompt_dropdown],
+            outputs=[prompt_text, model_value, file_ext_value]
+        )
+        
+        # Connect the process button to the processing function with all details
+        process_btn.click(
+            fn=process_file,
+            inputs=[file_input, prompt_text, model_value, file_ext_value],
+            outputs=[output_file, status_text]
+        )
+
+def process_file(file, prompt_text, model, file_ext):
     try:
         if file is None:
             return None, "Please upload a file to process."
@@ -16,8 +77,8 @@ def process_file(file, prompt_text):
         original_filename = os.path.basename(file.name)
         file_name, _ = os.path.splitext(original_filename)
         
-        # Create output CSV filename
-        output_filename = f"{file_name}.csv"
+        # Use the extension from the selected prompt
+        output_filename = f"{file_name}.{file_ext}"
         
         # Create output directory if it doesn't exist
         os.makedirs(PROCESSED_DIR, exist_ok=True)
@@ -35,19 +96,23 @@ def process_file(file, prompt_text):
             response = requests.post(
                 f'http://localhost:{config["API"]["Port"]}/ocr',
                 files={"file": (original_filename, file_blob)},
-                data={"prompt_text": prompt_text}
+                data={
+                    "prompt_text": prompt_text,
+                    "file_ext": file_ext,
+                    "model": model
+                }
             )
             
             if response.status_code == 200:
-                # Get the CSV content directly from the response
-                csv_content = response.content
+                # Get the text content directly from the response
+                text_content = response.content
                 
                 # Write the content to the file
                 with open(output_file_path, 'wb') as f:
-                    f.write(csv_content)
+                    f.write(text_content)
                 
                 # Return the path to the file and a success message
-                return output_file_path, f"CSV text successfully extracted and saved as '{output_filename}'"
+                return output_file_path, f"Text successfully extracted, processed and saved as '{output_filename}'"
             else:
                 # Handle error response
                 error_msg = "Unknown error"
@@ -64,30 +129,3 @@ def process_file(file, prompt_text):
     
     except Exception as e:
         return None, f"Error processing file: {str(e)}"
-
-def create_ocr_tab():
-    with gr.Group():
-        gr.Markdown("## OCR CSV Text Extraction")
-        gr.Markdown("Upload a file and process it to extract CSV text")
-        
-        with gr.Row():
-            file_input = gr.File(label="Upload File")
-        
-        prompt_text = gr.Textbox(
-            label="Prompt Text", 
-            placeholder="Enter prompt text to guide the OCR extraction...",
-            lines=2
-        )
-        
-        with gr.Row():
-            process_btn = gr.Button("Process File")
-        
-        output_file = gr.File(label="Output CSV")
-        status_text = gr.Textbox(label="Status")
-        
-        # Connect the process button to the processing function
-        process_btn.click(
-            fn=process_file,
-            inputs=[file_input, prompt_text],
-            outputs=[output_file, status_text]
-        )

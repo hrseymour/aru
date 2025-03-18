@@ -6,20 +6,6 @@ from werkzeug.utils import secure_filename
 from utils.config import config
 import utils.call_ai as ai
 
-PROMPT_TEXT = """
-Extract the table in the document as a CSV with header followed by data.
-Use the '|' character as your CSV separator instead of comma, ','.
-Keep the empty cells, but don't put zeros in them.
-Make sure all rows in the CSV have the same number of cells.
-
-Extract cells as numbers, not text, when possible.
-For example, extract "$10,000.00" as 10000.00 and "20%" as 20.
-Be extra careful to identify '%' columns, recognizing '%' characters.
-Our single table may span multiple tables on multiple pages: append them all together into a single table.
-Do not extract text outside the CSV.
-Do not add any explanatory text outside of the CSV.
-"""
-
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
@@ -44,6 +30,15 @@ def add_numbers():
         return jsonify({"error": "Parameters 'a' and 'b' must be numbers"}), 400
 
 
+def get_mimetype(file_ext):
+    mime_types = {
+        "txt": "text/plain",
+        "csv": "text/csv", 
+        "md": "text/markdown"
+    }
+    return mime_types.get(file_ext, "text/plain")  # Default to text/plain if extension not found
+
+
 @app.route('/ocr', methods=['POST'])
 @api_bp.route('/ocr', methods=['POST'])
 def ocr():
@@ -51,7 +46,9 @@ def ocr():
         return jsonify({"error": "No file part"}), 400
     
     file = request.files['file']
-    prompt_text = PROMPT_TEXT or request.form.get('prompt_text', '')
+    prompt_text = request.form.get('prompt_text', '')
+    file_ext = request.form.get('file_ext', '')
+    model = request.form.get('model', 'Gemini')
     
     if file.filename == '':
         return jsonify({"error": "No selected file"}), 400
@@ -62,17 +59,18 @@ def ocr():
         file_blob = file.read()
         
         # Call the function to extract text from the file
-        csv_text = ai.gemini_extract_text(file_blob, file_name, prompt_text)
+        output_text = ai.gemini_extract_text(file_blob, file_name, prompt_text)
         
         # Return the CSV content directly
         return Response(
-            csv_text,
-            mimetype="text/csv",
-            headers={"Content-disposition": f"attachment; filename={os.path.splitext(file_name)[0]}.csv"}
+            output_text,
+            mimetype=get_mimetype(file_ext),
+            headers={"Content-disposition": f"attachment; filename={os.path.splitext(file_name)[0]}.{file_ext}"}
         )
     
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/health', methods=['GET'])
 @api_bp.route('/health', methods=['GET'])

@@ -14,10 +14,10 @@ def create_gradio_interface():
     # Create tabs
     with gr.Blocks() as demo:
         with gr.Tabs():
-            with gr.Tab("OCR:CSV"):
+            with gr.Tab("OCR"):
                 create_ocr_tab()
             
-            with gr.Tab("Test"):
+            with gr.Tab("Playground"):
                 create_add_tab()
     
     return demo

@@ -107,6 +107,33 @@ def handle_pdf_xls(file_blob, file_type):
     
     return ""
 
+
+def load_prompts():
+    prompts = []
+    prompt_map = {}  # Map of name to full prompt spec
+    prompt_pattern = re.compile(r'^prompt:(.+)$')
+    
+    for section in config.config.sections():
+        match = prompt_pattern.match(section)
+        if match:
+            prompt_id = match.group(1)
+            prompt = {
+                'id': prompt_id,
+                'Name': config[section]['Name'],
+                'FileExt': config[section]['FileExt'],
+                'Model': config[section]['Model'],
+                'Prompt': config[section]['Prompt']
+            }
+            prompts.append(prompt)
+            # Add to our map using Name as the key
+            prompt_map[prompt['Name']] = prompt
+    
+    # Sort prompts by name for the dropdown list
+    sorted_names = sorted([p['Name'] for p in prompts])
+    
+    return sorted_names, prompt_map
+
+
 def mistral_extract_text(file_blob, file_name, prompt_text):
     from mistralai import Mistral
 

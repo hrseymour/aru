@@ -1,26 +1,14 @@
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from utils.config import config
 import utils.call_ai as ai
     
 
 # Example usage
 if __name__ == "__main__":
-    prompt = """
-        Extract the table in the document as a CSV with header followed by data.
-        Use the '|' character as your CSV separator instead of comma, ','.
-        Keep the empty cells, but don't put zeros in them.
-        Make sure all rows in the CSV have the same number of cells.
-
-        Extract cells as numbers, not text, when possible.
-        For example, extract "$10,000.00" as 10000.00 and "20%" as 20.
-        Be extra careful to identify % columns, recognizing % characters.
-        Our single table may span multiple tables on multiple pages: append them all together into a single table.
-        Do not extract text outside the CSV.
-        Do not add any explanatory text outside of the CSV.
-    """
-    
     data_dir = "data/Loss Run"
+    prompt = config['prompt:ocr']['Prompt']
 
     # # file_path = "Company 1 - Cargo Chart.pdf"
     # # file_path = "Company 3 - Loss Run.pdf"
@@ -30,6 +18,8 @@ if __name__ == "__main__":
     # result = gemini_extract_text(file_blob, os.path.basename(file_path), prompt)  # openai_extract_text
     # result = process_csv(result)
     # print(result)
+    
+    sorted_names, prompt_map = ai.load_prompts()
 
     for file_name in os.listdir(data_dir):
         if not file_name.lower().endswith(".pdf"):
