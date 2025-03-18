@@ -59,8 +59,13 @@ def ocr():
         file_blob = file.read()
         
         # Call the function to extract text from the file
-        output_text = ai.gemini_extract_text(file_blob, file_name, prompt_text)
-        
+        if model == "OpenAI":
+            output_text = ai.openai_extract_text(file_blob, file_name, prompt_text)
+        elif model == "Mistral":
+            output_text = ai.mistral_extract_text(file_blob, file_name, prompt_text)
+        else:
+            output_text = ai.gemini_extract_text(file_blob, file_name, prompt_text)
+       
         # Return the CSV content directly
         return Response(
             output_text,

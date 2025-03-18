@@ -11,7 +11,10 @@ def create_ocr_tab():
     # Load prompts for the dropdown
     sorted_names, prompt_map = load_prompts()
     
-    default_prompt_name = "CSV OCR"
+    # Create the models list
+    models_list = ['Default'] + config['API']['Models'].split('|')
+    
+    default_prompt_name = config['UI']['DefaultPrompt']
     default_prompt = prompt_map.get(default_prompt_name)
     
     # Handler for when a prompt is selected
@@ -30,6 +33,11 @@ def create_ocr_tab():
                 choices=sorted_names,
                 value=default_prompt_name if default_prompt_name in sorted_names else None,
                 label="Select Prompt Template"
+            )
+            model_dropdown = gr.Dropdown(
+                choices=models_list,
+                value="Default",
+                label="Select Model"
             )
         
         # Hidden fields to store selected prompt details
@@ -64,11 +72,11 @@ def create_ocr_tab():
         # Connect the process button to the processing function with all details
         process_btn.click(
             fn=process_file,
-            inputs=[file_input, prompt_text, model_value, file_ext_value],
+            inputs=[file_input, prompt_text, model_value, file_ext_value, model_dropdown],
             outputs=[output_file, status_text]
         )
 
-def process_file(file, prompt_text, model, file_ext):
+def process_file(file, prompt_text, default_model, file_ext, selected_model):
     try:
         if file is None:
             return None, "Please upload a file to process."
@@ -89,6 +97,9 @@ def process_file(file, prompt_text, model, file_ext):
         # Read the file content
         with open(file.name, "rb") as f:
             file_blob = f.read()
+        
+        # Determine which model to use
+        model = default_model if selected_model == "Default" else selected_model
         
         # Call the API to extract text
         try:
