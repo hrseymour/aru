@@ -5,9 +5,9 @@ After=network.target
 [Service]
 User=harlan
 Group=harlan
-WorkingDirectory=/home/harlan/repos/aru/frontend
+WorkingDirectory=/home/harlan/repos/aru
 Environment="PATH=/home/harlan/repos/aru/venv/bin"
-ExecStart=/home/harlan/repos/aru/venv/bin/python app.py
+ExecStart=/home/harlan/repos/aru/venv/bin/python -m frontend.app
 Restart=always
 
 [Install]
