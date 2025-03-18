@@ -1,11 +1,14 @@
 # frontend/tabs/ocr_tab.py
 import gradio as gr
+import markdown
 import os
 import requests
+
 from utils.config import config
 from utils.call_ai import load_prompts
 
 PROCESSED_DIR = "data/processed"
+
 
 def create_ocr_tab():
     # Load prompts for the dropdown
@@ -58,9 +61,24 @@ def create_ocr_tab():
         with gr.Row():
             # Use columns to control the width
             with gr.Column(variant="compact"):
-                output_file = gr.File(label="Output File")
+                output_file = gr.File(label="Download Output")
             with gr.Column(variant="compact"):
                 status_text = gr.Textbox(label="Status")
+        
+        # Add a preview section with tabs for different view types
+        gr.Markdown("### Output")
+        with gr.Tabs():
+            with gr.TabItem("Plain Text"):
+                preview_text = gr.Textbox(
+                    label="",
+                    value="Processed content will appear here...",
+                    lines=12
+                )
+            with gr.TabItem("Rendered View"):
+                preview_html = gr.HTML(
+                    label="",
+                    value="<div style='height: 300px; overflow-y: auto; padding: 10px; border: 1px solid #ddd;'><p>Processed content will appear here...</p></div>"
+                )
         
         # Connect the prompt dropdown to update the prompt text and hidden fields
         prompt_dropdown.change(
@@ -73,13 +91,13 @@ def create_ocr_tab():
         process_btn.click(
             fn=process_file,
             inputs=[file_input, prompt_text, model_value, file_ext_value, model_dropdown],
-            outputs=[output_file, status_text]
+            outputs=[output_file, status_text, preview_html, preview_text]
         )
 
 def process_file(file, prompt_text, default_model, file_ext, selected_model):
     try:
         if file is None:
-            return None, "Please upload a file to process."
+            return None, "Please upload a file to process.", "", ""
         
         # Get the original file name
         original_filename = os.path.basename(file.name)
@@ -122,8 +140,39 @@ def process_file(file, prompt_text, default_model, file_ext, selected_model):
                 with open(output_file_path, 'wb') as f:
                     f.write(text_content)
                 
-                # Return the path to the file and a success message
-                return output_file_path, f"Text successfully extracted, processed and saved as '{output_filename}'"
+                # Get the content as text for display
+                try:
+                    text_display = text_content.decode('utf-8')
+                except UnicodeDecodeError:
+                    text_display = "Binary content cannot be displayed as text."
+                
+                # Generate HTML preview based on file extension
+                html_preview = "<div style='height: 300px; overflow-y: auto; padding: 10px; border: 1px solid #ddd; font-size: 14px;'>"
+                
+                if file_ext.lower() in ['md', 'markdown']:
+                    # Convert markdown to HTML
+                    try:
+                        html_content = markdown.markdown(text_display)
+                        html_preview += html_content
+                    except Exception as e:
+                        html_preview += f"<p>Error rendering markdown: {str(e)}</p><pre>{text_display}</pre>"
+                
+                elif file_ext.lower() in ['html', 'htm']:
+                    # Directly use HTML (with basic sanitization)
+                    html_preview += text_display
+                
+                elif file_ext.lower() in ['txt', 'csv', 'json', 'xml']:
+                    # Preformatted text for code-like content
+                    html_preview += f"<pre style='white-space: pre-wrap;'>{text_display}</pre>"
+                
+                else:
+                    # Default to preformatted text for unknown types
+                    html_preview += f"<pre style='white-space: pre-wrap;'>{text_display}</pre>"
+                
+                html_preview += "</div>"
+                
+                # Return the path to the file, success message, and preview content
+                return output_file_path, f"Text successfully extracted and processed.", html_preview, text_display
             else:
                 # Handle error response
                 error_msg = "Unknown error"
@@ -133,10 +182,13 @@ def process_file(file, prompt_text, default_model, file_ext, selected_model):
                 except:
                     error_msg = f"Error code: {response.status_code}"
                 
-                return None, f"Error from API: {error_msg}"
+                error_html = f"Error from API: {error_msg}"
+                return None, error_html, error_html, f"Error from API: {error_msg}"
                 
         except requests.exceptions.RequestException as e:
-            return None, f"Failed to connect to API: {str(e)}"
+            error_html = f"Failed to connect to API: {str(e)}"
+            return None, error_html, error_html, f"Failed to connect to API: {str(e)}"
     
     except Exception as e:
-        return None, f"Error processing file: {str(e)}"
+        error_html = f"Error processing file: {str(e)}"
+        return None, error_html, error_html, f"Error processing file: {str(e)}"
