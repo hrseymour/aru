@@ -1,5 +1,6 @@
 # frontend/tabs/ocr_tab.py
 import gradio as gr
+import markdown
 import os
 import requests
 
