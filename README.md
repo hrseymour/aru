@@ -2,7 +2,7 @@
 
 A simple project with a Flask API for addition and a Gradio frontend interface.
 
-## Project Structure
+## Project Structure (sans tabs/ and utils/)
 
 ```
 aru/
