@@ -7,8 +7,6 @@ from utils.config import config
 import utils.md_utils as md_utils
 from utils.call_ai import load_prompts
 
-PROCESSED_DIR = "data/processed"
-
 
 def create_ocr_tab():
     # Load prompts for the dropdown
@@ -106,10 +104,11 @@ def process_file(file, prompt_text, default_model, file_ext, selected_model):
         output_filename = f"{file_name}.{file_ext}"
         
         # Create output directory if it doesn't exist
-        os.makedirs(PROCESSED_DIR, exist_ok=True)
+        dir = config['UI']['ProcessedDir']
+        os.makedirs(dir, exist_ok=True)
         
         # Full path for the output file
-        output_file_path = os.path.join(PROCESSED_DIR, output_filename)
+        output_file_path = os.path.join(dir, output_filename)
         
         # Read the file content
         with open(file.name, "rb") as f:
