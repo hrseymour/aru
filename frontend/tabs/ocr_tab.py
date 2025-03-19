@@ -1,10 +1,10 @@
 # frontend/tabs/ocr_tab.py
 import gradio as gr
-import markdown
 import os
 import requests
 
 from utils.config import config
+import utils.md_utils as md_utils
 from utils.call_ai import load_prompts
 
 PROCESSED_DIR = "data/processed"
@@ -150,12 +150,39 @@ def process_file(file, prompt_text, default_model, file_ext, selected_model):
                 html_preview = "<div style='height: 300px; overflow-y: auto; padding: 10px; border: 1px solid #ddd; font-size: 14px;'>"
                 
                 if file_ext.lower() in ['md', 'markdown']:
-                    # Convert markdown to HTML
+                    # Add custom CSS for better table styling
+                    html_preview += md_utils.get_table_css()
+
+                    # Convert markdown to HTML with enhanced extensions
                     try:
-                        html_content = markdown.markdown(text_display)
+                        # Try to get the required extensions
+                        extensions = ['tables']
+                        
+                        # Add additional extensions if available
+                        try:
+                            import markdown.extensions.fenced_code
+                            extensions.append('fenced_code')
+                        except ImportError:
+                            pass
+                            
+                        # Convert markdown to HTML
+                        html_content = markdown.markdown(text_display, extensions=extensions)
+                        
+                        # If there are no tables rendered but there should be, try fixing the markdown
+                        if '<table>' not in html_content and '|' in text_display and '---' in text_display:
+                            fixed_text = md_utils.fix_markdown_tables(text_display)
+                            html_content = markdown.markdown(fixed_text, extensions=extensions)
+                            
                         html_preview += html_content
                     except Exception as e:
-                        html_preview += f"<p>Error rendering markdown: {str(e)}</p><pre>{text_display}</pre>"
+                        # Fallback attempt with table fixing if regular rendering fails
+                        try:
+                            fixed_text = md_utils.fix_markdown_tables(text_display)
+                            html_content = markdown.markdown(fixed_text, extensions=['tables'])
+                            html_preview += html_content
+                        except:
+                            # If all else fails, show the raw text
+                            html_preview += f"<p>Error rendering markdown: {str(e)}</p><pre>{text_display}</pre>"
                 
                 elif file_ext.lower() in ['html', 'htm']:
                     # Directly use HTML (with basic sanitization)

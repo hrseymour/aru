@@ -143,13 +143,16 @@ def mistral_extract_text(file_blob, file_name, prompt_text):
     # Initialize the Mistral client
     client = Mistral(api_key=api_key)
     
+    if get_file_type(file_name) in ['text', 'unknown']:
+        file_blob = file_blob.decode('utf-8')
+    
     # Upload the document and get a signed URL
     uploaded_file = client.files.upload(
         file={
             "file_name": file_name,
             "content": file_blob,
         },
-        purpose="ocr"  # "chat-completion"
+        purpose="batch"
     )
     
     signed_url = client.files.get_signed_url(file_id=uploaded_file.id, expiry=1)
