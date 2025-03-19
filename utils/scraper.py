@@ -59,10 +59,13 @@ def site_scraper(url):
         # Extract all text from the page
         text = soup.get_text(separator=' ', strip=True)
         
+        if "enable JavaScript" in text:
+            return 500, "You need to enable JavaScript to run this app.", "bad.com"
+
         os.makedirs(dir, exist_ok=True)
         with open(file_path, 'w') as f:
             f.write(text)        
         
         return 200, text, url
     else:
-        return response.status_code, f"Failed to read specified page (Error: {response.status_code})", "error.com"
+        return response.status_code, f"Failed to read specified page (Error: {response.status_code})", "bad.com"

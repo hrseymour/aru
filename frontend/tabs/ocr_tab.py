@@ -102,9 +102,6 @@ def process_file(file, prompt_text, default_model, file_ext, selected_model, url
         # Convert requires_url string to boolean
         requires_url = requires_url_str.lower() == 'true'
         
-        # Determine which endpoint to use
-        endpoint = 'summary' if requires_url else 'ocr'
-        
         # Check if appropriate inputs are provided
         if not requires_url and file is None:
             return None, "Please upload a file to process.", "", ""
@@ -134,7 +131,7 @@ def process_file(file, prompt_text, default_model, file_ext, selected_model, url
                 
                 # Make the API request without files
                 response = requests.post(
-                    f'http://localhost:{config["API"]["Port"]}/{endpoint}',
+                    f'http://localhost:{config["API"]["Port"]}/summary',
                     data=data
                 )
                 
@@ -142,11 +139,7 @@ def process_file(file, prompt_text, default_model, file_ext, selected_model, url
                 if response.status_code == 200:
                     # Extract filename from content-disposition header if present
                     cd_header = response.headers.get('content-disposition', '')
-                    if 'filename=' in cd_header:
-                        output_filename = cd_header.split('filename=')[1].strip('"')
-                    else:
-                        # Fallback: Create a generic filename
-                        output_filename = f"url_summary.{file_ext}"
+                    output_filename = cd_header.split('filename=')[1].strip('"')
                 else:
                     # Will be handled in the error section below
                     output_filename = None
@@ -162,7 +155,7 @@ def process_file(file, prompt_text, default_model, file_ext, selected_model, url
                 
                 # Make the API request with file
                 response = requests.post(
-                    f'http://localhost:{config["API"]["Port"]}/{endpoint}',
+                    f'http://localhost:{config["API"]["Port"]}/ocr',
                     files={"file": (original_filename, file_blob)},
                     data=data
                 )

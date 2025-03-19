@@ -7,7 +7,7 @@ import re
 from utils.config import config
 
 MIN_PDF_TEXT_LEN = 100
-UNKNOWN_TEXT_LEN = 10000
+MAX_TEXT_LEN = 20000
 OCR_TAG = "OCR!"
 
 
@@ -66,8 +66,8 @@ def post_process_csv(input_text):
   
 def handle_pdf_xls(file_blob, file_type):
     # if type "unknown", and small in size, try treating it as "text"
-    if file_type == "text" or (file_type == "unknown" and len(file_blob) < UNKNOWN_TEXT_LEN):
-        return file_blob  # text
+    if file_type == "text" or file_type == "unknown":
+        return file_blob[:MAX_TEXT_LEN] # text
     
     # Handle PDF files using PyPDF2
     if file_type == "pdf":
