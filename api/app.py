@@ -1,9 +1,9 @@
 from flask import Flask, request, jsonify, Response
 import os
-# import tempfile
 from werkzeug.utils import secure_filename
 
 from utils.config import config
+from utils.scraper import site_scraper
 import utils.call_ai as ai
 
 app = Flask(__name__)
@@ -39,6 +39,17 @@ def get_mimetype(file_ext):
     return mime_types.get(file_ext, "text/plain")  # Default to text/plain if extension not found
 
 
+def call_ai(model, file_blob, file_name, prompt_text):
+    # Call the function to extract text from the file
+    if model == "OpenAI":
+        output_text = ai.openai_extract_text(file_blob, file_name, prompt_text)
+    elif model == "Mistral":
+        output_text = ai.mistral_extract_text(file_blob, file_name, prompt_text)
+    else:
+        output_text = ai.gemini_extract_text(file_blob, file_name, prompt_text)
+    
+    return output_text
+
 @app.route('/ocr', methods=['POST'])
 @api_bp.route('/ocr', methods=['POST'])
 def ocr():
@@ -48,7 +59,7 @@ def ocr():
     file = request.files['file']
     prompt_text = request.form.get('prompt_text', '')
     file_ext = request.form.get('file_ext', '')
-    model = request.form.get('model', 'Gemini')
+    model = request.form.get('model', config['API']['DefaultModel'])
     
     if file.filename == '':
         return jsonify({"error": "No selected file"}), 400
@@ -59,18 +70,44 @@ def ocr():
         file_blob = file.read()
         
         # Call the function to extract text from the file
-        if model == "OpenAI":
-            output_text = ai.openai_extract_text(file_blob, file_name, prompt_text)
-        elif model == "Mistral":
-            output_text = ai.mistral_extract_text(file_blob, file_name, prompt_text)
-        else:
-            output_text = ai.gemini_extract_text(file_blob, file_name, prompt_text)
+        output_text = call_ai(model, file_blob, file_name, prompt_text)
        
         # Return the CSV content directly
         return Response(
             output_text,
             mimetype=get_mimetype(file_ext),
             headers={"Content-disposition": f"attachment; filename={os.path.splitext(file_name)[0]}.{file_ext}"}
+        )
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/summary', methods=['POST'])
+@api_bp.route('/summary', methods=['POST'])
+def summary():
+    # Check if URL is provided
+    url = request.form.get('url', '')
+    if not url:
+        return jsonify({"error": "URL is required"}), 400
+    
+    prompt_text = request.form.get('prompt_text', '')
+    file_ext = request.form.get('file_ext', '')
+    model = request.form.get('model', config['API']['DefaultModel'])
+    
+    try:
+        return_code, site_text, file_name = site_scraper(url)
+        if return_code != 200:
+            raise ValueError(site_text)
+  
+        # Call the function to create summary
+        output_text = call_ai(model, site_text, file_name, prompt_text)
+                
+        # Return the processed content directly
+        return Response(
+            output_text,
+            mimetype=get_mimetype(file_ext),
+            headers={"Content-disposition": f"attachment; filename={file_name}.{file_ext}"}
         )
     
     except Exception as e:

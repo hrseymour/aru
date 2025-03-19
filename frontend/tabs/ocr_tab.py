@@ -21,7 +21,8 @@ def create_ocr_tab():
     # Handler for when a prompt is selected
     def on_prompt_selected(prompt_name):
         selected_prompt = prompt_map[prompt_name]
-        return selected_prompt['Prompt'], selected_prompt['Model'], selected_prompt['FileExt']
+        requires_url_val = selected_prompt['id'] in ['summary']
+        return selected_prompt['Prompt'], selected_prompt['Model'], selected_prompt['FileExt'], requires_url_val
 
     with gr.Group():
         gr.Markdown("## Text Extraction and Processing")
@@ -40,14 +41,19 @@ def create_ocr_tab():
                 value="Default",
                 label="Select Model"
             )
+            url_input = gr.Textbox(
+                label="URL",
+                placeholder="Enter optional URL to scrape...",
+            )
         
         # Hidden fields to store selected prompt details
         model_value = gr.Textbox(visible=False, value=default_prompt["Model"])
         file_ext_value = gr.Textbox(visible=False, value=default_prompt["FileExt"])
+        requires_url = gr.Textbox(visible=False, value=str(default_prompt['id'] in ['summary']))
         
         prompt_text = gr.Textbox(
             label="Prompt Text", 
-            placeholder="Enter prompt text to guide the OCR extraction...",
+            placeholder="Enter prompt text to guide the AI...",
             lines=5,
             value=default_prompt["Prompt"]
         )
@@ -81,58 +87,93 @@ def create_ocr_tab():
         prompt_dropdown.change(
             fn=on_prompt_selected,
             inputs=[prompt_dropdown],
-            outputs=[prompt_text, model_value, file_ext_value]
+            outputs=[prompt_text, model_value, file_ext_value, requires_url]
         )
         
         # Connect the process button to the processing function with all details
         process_btn.click(
             fn=process_file,
-            inputs=[file_input, prompt_text, model_value, file_ext_value, model_dropdown],
+            inputs=[file_input, prompt_text, model_value, file_ext_value, model_dropdown, url_input, requires_url],
             outputs=[output_file, status_text, preview_html, preview_text]
         )
 
-def process_file(file, prompt_text, default_model, file_ext, selected_model):
+def process_file(file, prompt_text, default_model, file_ext, selected_model, url, requires_url_str):
     try:
-        if file is None:
+        # Convert requires_url string to boolean
+        requires_url = requires_url_str.lower() == 'true'
+        
+        # Determine which endpoint to use
+        endpoint = 'summary' if requires_url else 'ocr'
+        
+        # Check if appropriate inputs are provided
+        if not requires_url and file is None:
             return None, "Please upload a file to process.", "", ""
         
-        # Get the original file name
-        original_filename = os.path.basename(file.name)
-        file_name, _ = os.path.splitext(original_filename)
+        if requires_url and not url:
+            return None, "URL must be specified for summary.", "", ""
         
-        # Use the extension from the selected prompt
-        output_filename = f"{file_name}.{file_ext}"
+        # Determine which model to use
+        model = default_model if selected_model == "Default" else selected_model
         
         # Create output directory if it doesn't exist
         dir = config['UI']['ProcessedDir']
         os.makedirs(dir, exist_ok=True)
         
-        # Full path for the output file
-        output_file_path = os.path.join(dir, output_filename)
-        
-        # Read the file content
-        with open(file.name, "rb") as f:
-            file_blob = f.read()
-        
-        # Determine which model to use
-        model = default_model if selected_model == "Default" else selected_model
-        
-        # Call the API to extract text
+        # Call the API to process the content
         try:
-            # Send request to API endpoint
-            response = requests.post(
-                f'http://localhost:{config["API"]["Port"]}/ocr',
-                files={"file": (original_filename, file_blob)},
-                data={
-                    "prompt_text": prompt_text,
-                    "file_ext": file_ext,
-                    "model": model
-                }
-            )
+            # Prepare data dictionary for the API request
+            data = {
+                "prompt_text": prompt_text,
+                "file_ext": file_ext,
+                "model": model
+            }
             
+            # Add URL to the data dictionary if using the summary endpoint
+            if requires_url:
+                data["url"] = url
+                
+                # Make the API request without files
+                response = requests.post(
+                    f'http://localhost:{config["API"]["Port"]}/{endpoint}',
+                    data=data
+                )
+                
+                # Generate filename from URL (assuming we'll get this from the response headers)
+                if response.status_code == 200:
+                    # Extract filename from content-disposition header if present
+                    cd_header = response.headers.get('content-disposition', '')
+                    if 'filename=' in cd_header:
+                        output_filename = cd_header.split('filename=')[1].strip('"')
+                    else:
+                        # Fallback: Create a generic filename
+                        output_filename = f"url_summary.{file_ext}"
+                else:
+                    # Will be handled in the error section below
+                    output_filename = None
+            else:
+                # For OCR endpoint, include the file
+                original_filename = os.path.basename(file.name)
+                file_name, _ = os.path.splitext(original_filename)
+                output_filename = f"{file_name}.{file_ext}"
+                
+                # Read the file content
+                with open(file.name, "rb") as f:
+                    file_blob = f.read()
+                
+                # Make the API request with file
+                response = requests.post(
+                    f'http://localhost:{config["API"]["Port"]}/{endpoint}',
+                    files={"file": (original_filename, file_blob)},
+                    data=data
+                )
+            
+            # Process the response
             if response.status_code == 200:
                 # Get the text content directly from the response
                 text_content = response.content
+                
+                # Full path for the output file
+                output_file_path = os.path.join(dir, output_filename)
                 
                 # Write the content to the file
                 with open(output_file_path, 'wb') as f:
@@ -144,11 +185,11 @@ def process_file(file, prompt_text, default_model, file_ext, selected_model):
                 except UnicodeDecodeError:
                     text_display = "Binary content cannot be displayed as text."
                 
-                # Use the new utility function to create the HTML preview
+                # Use the utility function to create the HTML preview
                 html_preview = md_utils.create_html_preview(text_display, file_ext)
                 
                 # Return the path to the file, success message, and preview content
-                return output_file_path, f"Text successfully extracted and processed.", html_preview, text_display
+                return output_file_path, f"Content successfully processed.", html_preview, text_display
             else:
                 # Handle error response
                 error_msg = "Unknown error"
@@ -166,5 +207,5 @@ def process_file(file, prompt_text, default_model, file_ext, selected_model):
             return None, error_html, error_html, f"Failed to connect to API: {str(e)}"
     
     except Exception as e:
-        error_html = f"Error processing file: {str(e)}"
-        return None, error_html, error_html, f"Error processing file: {str(e)}"
+        error_html = f"Error processing content: {str(e)}"
+        return None, error_html, error_html, f"Error processing content: {str(e)}"

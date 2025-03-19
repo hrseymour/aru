@@ -7,7 +7,7 @@ import utils.call_ai as ai
 
 if __name__ == "__main__":
     URL = "https://ARUcaptiveinsurance.com"
-    text = site_scraper(URL)
+    return_code, text, file_name = site_scraper(URL)
 
     prompt_text = config["prompt:summary"]["Prompt"]
     overview = ai.gemini_extract_text(text, "ARU_overview.txt", prompt_text)

@@ -37,7 +37,7 @@ def site_scraper(url):
 
     if is_file_newish(file_path):
         with open(file_path, 'r') as f:
-           return f.read()       
+           return 200, f.read(), url
         
     # Construct the API request URL
     api_key = config["ScrapingFish"]["API_KEY"]
@@ -63,7 +63,6 @@ def site_scraper(url):
         with open(file_path, 'w') as f:
             f.write(text)        
         
-        return text
+        return 200, text, url
     else:
-        print(f"Error: {response.status_code}")
-        return None
+        return response.status_code, f"Failed to read specified page (Error: {response.status_code})", "error.com"
