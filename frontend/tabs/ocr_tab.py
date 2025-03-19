@@ -1,6 +1,5 @@
 # frontend/tabs/ocr_tab.py
 import gradio as gr
-import markdown
 import os
 import requests
 
@@ -58,7 +57,6 @@ def create_ocr_tab():
         with gr.Row():
             process_btn = gr.Button("Process File", size="sm")
         
-        # Instead of using scale, we'll use a more compatible approach
         with gr.Row():
             # Use columns to control the width
             with gr.Column(variant="compact"):
@@ -147,57 +145,8 @@ def process_file(file, prompt_text, default_model, file_ext, selected_model):
                 except UnicodeDecodeError:
                     text_display = "Binary content cannot be displayed as text."
                 
-                # Generate HTML preview based on file extension
-                html_preview = "<div style='height: 300px; overflow-y: auto; padding: 10px; border: 1px solid #ddd; font-size: 14px;'>"
-                
-                if file_ext.lower() in ['md', 'markdown']:
-                    # Add custom CSS for better table styling
-                    html_preview += md_utils.get_table_css()
-
-                    # Convert markdown to HTML with enhanced extensions
-                    try:
-                        # Try to get the required extensions
-                        extensions = ['tables']
-                        
-                        # Add additional extensions if available
-                        try:
-                            import markdown.extensions.fenced_code
-                            extensions.append('fenced_code')
-                        except ImportError:
-                            pass
-                            
-                        # Convert markdown to HTML
-                        html_content = markdown.markdown(text_display, extensions=extensions)
-                        
-                        # If there are no tables rendered but there should be, try fixing the markdown
-                        if '<table>' not in html_content and '|' in text_display and '---' in text_display:
-                            fixed_text = md_utils.fix_markdown_tables(text_display)
-                            html_content = markdown.markdown(fixed_text, extensions=extensions)
-                            
-                        html_preview += html_content
-                    except Exception as e:
-                        # Fallback attempt with table fixing if regular rendering fails
-                        try:
-                            fixed_text = md_utils.fix_markdown_tables(text_display)
-                            html_content = markdown.markdown(fixed_text, extensions=['tables'])
-                            html_preview += html_content
-                        except:
-                            # If all else fails, show the raw text
-                            html_preview += f"<p>Error rendering markdown: {str(e)}</p><pre>{text_display}</pre>"
-                
-                elif file_ext.lower() in ['html', 'htm']:
-                    # Directly use HTML (with basic sanitization)
-                    html_preview += text_display
-                
-                elif file_ext.lower() in ['txt', 'csv', 'json', 'xml']:
-                    # Preformatted text for code-like content
-                    html_preview += f"<pre style='white-space: pre-wrap;'>{text_display}</pre>"
-                
-                else:
-                    # Default to preformatted text for unknown types
-                    html_preview += f"<pre style='white-space: pre-wrap;'>{text_display}</pre>"
-                
-                html_preview += "</div>"
+                # Use the new utility function to create the HTML preview
+                html_preview = md_utils.create_html_preview(text_display, file_ext)
                 
                 # Return the path to the file, success message, and preview content
                 return output_file_path, f"Text successfully extracted and processed.", html_preview, text_display

@@ -58,7 +58,10 @@ def post_process_csv(input_text):
         csv_content = input_text
     
     # Step 2: remove commas + replace bars with commas
-    return csv_content.replace(',', '').replace('^', ',')
+    if "^^" in csv_content:
+        return csv_content.replace(',', '').replace('^^', ',')
+    
+    return csv_content
 
   
 def handle_pdf_xls(file_blob, file_type):
