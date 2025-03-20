@@ -8,6 +8,7 @@ gunicorn
 markdown
 mistralai
 numpy
+openai
 pandas
 PyPdf2
 python-multipart

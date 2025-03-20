@@ -147,7 +147,8 @@ def mistral_extract_text(file_blob, file_name, prompt_text):
     client = Mistral(api_key=api_key)
     
     if get_file_type(file_name) in ['text', 'unknown']:
-        file_blob = file_blob.decode('utf-8')
+        if isinstance(file_blob, bytes):
+            file_blob = file_blob.decode('utf-8')
     
     # Upload the document and get a signed URL
     uploaded_file = client.files.upload(
