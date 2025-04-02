@@ -59,7 +59,7 @@ def create_ocr_tab():
         )
         
         with gr.Row():
-            process_btn = gr.Button("Process File", size="sm")
+            process_btn = gr.Button("Invoke Artificial Intelligence (AI)", size="sm")
         
         with gr.Row():
             # Use columns to control the width

@@ -5,6 +5,7 @@ flask
 google.generativeai
 gradio
 gunicorn
+html2text
 markdown
 mistralai
 numpy

@@ -3,6 +3,7 @@ import os
 from werkzeug.utils import secure_filename
 
 from utils.config import config
+from utils.eml_extractor import extract_email_chain
 from utils.scraper import site_scraper
 import utils.call_ai as ai
 
@@ -39,6 +40,23 @@ def get_mimetype(file_ext):
     return mime_types.get(file_ext, "text/plain")  # Default to text/plain if extension not found
 
 
+def handle_eml(file_blob, file_name):
+    # If it's an email file (.eml), extract its content
+    if not file_name.lower().endswith('.eml'):
+        return file_blob
+    
+    try:
+        # Use the extract_email_chain function to get readable text
+        extracted_text = extract_email_chain(file_blob)
+        return extracted_text.encode('utf-8') if isinstance(extracted_text, str) else extracted_text
+    except Exception as email_err:
+        # Log the error but continue with the original content if extraction fails
+        print(f"Email extraction error: {str(email_err)}")
+    
+    return file_blob      
+            
+
+# Could add more detailed logging here
 def call_ai(model, file_blob, file_name, prompt_text):
     # Call the function to extract text from the file
     if model == "OpenAI":
@@ -49,6 +67,7 @@ def call_ai(model, file_blob, file_name, prompt_text):
         output_text = ai.gemini_extract_text(file_blob, file_name, prompt_text)
     
     return output_text
+
 
 @app.route('/ocr', methods=['POST'])
 @api_bp.route('/ocr', methods=['POST'])
@@ -68,6 +87,7 @@ def ocr():
         # Get the file name and content
         file_name = secure_filename(file.filename)
         file_blob = file.read()
+        file_blob = handle_eml(file_blob, file_name)
         
         # Call the function to extract text from the file
         output_text = call_ai(model, file_blob, file_name, prompt_text)

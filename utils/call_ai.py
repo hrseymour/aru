@@ -7,13 +7,17 @@ import re
 from utils.config import config
 
 MIN_PDF_TEXT_LEN = 100
-MAX_TEXT_LEN = 20000
+MAX_TEXT_LEN = 100000
 OCR_TAG = "OCR!"
 
 
 def read_file(file_path):
     with open(file_path, "rb") as file:
         return file.read()
+    
+
+def limit_text(text):
+    return text[:MAX_TEXT_LEN] # text
 
 
 def get_file_type(file_name):
@@ -67,7 +71,7 @@ def post_process_csv(input_text):
 def handle_pdf_xls(file_blob, file_type):
     # if type "unknown", and small in size, try treating it as "text"
     if file_type == "text" or file_type == "unknown":
-        return file_blob[:MAX_TEXT_LEN] # text
+        return file_blob  # text
     
     # Handle PDF files using PyPDF2
     if file_type == "pdf":
@@ -241,7 +245,7 @@ def openai_extract_text(file_blob, file_name, prompt_text):
         
         messages = [{
             "role": "user",
-            "content": f"{prompt_text}\n\nDocument content:\n{text}"
+            "content": f"{prompt_text}\n\nDocument content:\n{limit_text(text)}"
         }]
 
     response = client.chat.completions.create(
@@ -292,7 +296,7 @@ def gemini_extract_text(file_blob, file_name, prompt_text):
         elif len(text) == 0:
             return "Text NOT FOUND in pdf/xlsx"
         
-        contents = [f"{prompt_text}\n\nDocument content:\n{text}"]
+        contents = [f"{prompt_text}\n\nDocument content:\n{limit_text(text)}"]
         
         response = model_instance.generate_content(contents)
         return post_process_csv(response.text)
