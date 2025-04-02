@@ -35,4 +35,4 @@ TEMP_DIR="/home/harlan/repos/aru/data/processed"
 find "$TEMP_DIR" -type f -mmin +$MAX_AGE -delete
 
 # Log the cleanup (optional)
-echo "$(date): Cleaned files older than $MAX_AGE minutes from $TEMP_DIR" >> /var/log/temp_cleanup.log
+# echo "$(date): Cleaned files older than $MAX_AGE minutes from $TEMP_DIR" >> /var/log/temp_cleanup.log
